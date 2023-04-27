@@ -13,6 +13,7 @@ class WallpaperChangerGUI:
 
         self.folder_path = tk.StringVar()
         self.current_wallpaper = None
+        self.run_wallpaper_changer = False
 
         self.folder_label = tk.Label(master, text="Wallpaper Folder")
         self.folder_label.pack()
@@ -32,9 +33,6 @@ class WallpaperChangerGUI:
         self.stop_button = tk.Button(master, text="Stop Wallpaper Changer", command=self.stop_wallpaper_changer, state=tk.DISABLED)
         self.stop_button.pack()
 
-        self.current_wallpaper_label = tk.Label(master, text="Current Wallpaper: ")
-        self.current_wallpaper_label.pack()
-
     def select_folder(self):
         folder_path = filedialog.askdirectory()
         if folder_path:
@@ -48,16 +46,19 @@ class WallpaperChangerGUI:
         self.show_wallpaper()
 
     def show_wallpaper(self):
-        self.current_wallpaper = random.choice(self.wallpapers)
-        self.current_wallpaper_label.config(text=f"Current Wallpaper: {self.current_wallpaper}")
-        if platform.system() == 'Windows':
-            ctypes.windll.user32.SystemParametersInfoW(20, 0, self.current_wallpaper, 0)
-        else:
-            subprocess.run(['dconf', 'write', '/org/mate/desktop/background/picture-filename', f"'{self.current_wallpaper}'"])
-        self.master.after(10000, self.show_wallpaper)
+        if self.run_wallpaper_changer:
+            self.current_wallpaper = random.choice(self.wallpapers)
+            if platform.system() == 'Windows':
+                ctypes.windll.user32.SystemParametersInfoW(20, 0, self.current_wallpaper, 0)
+            elif platform.system() == 'Darwin':
+                subprocess.run(['osascript', '-e', f'set theDesktops to {{1, 2}}\nrepeat with aDesktop in theDesktops\n\ttell desktop aDesktop\n\t\tset picture to "{self.current_wallpaper}"\n\tend tell\nend repeat\n'])
+            else:
+                subprocess.run(['dconf', 'write', '/org/mate/desktop/background/picture-filename', f"'{self.current_wallpaper}'"])
+            self.master.after(10000, self.show_wallpaper)
 
     def start_wallpaper_changer(self):
         self.load_wallpapers()
+        self.run_wallpaper_changer = True
         self.start_button.config(state=tk.DISABLED)
         self.folder_entry.config(state=tk.DISABLED)
         self.folder_button.config(state=tk.DISABLED)
@@ -66,6 +67,7 @@ class WallpaperChangerGUI:
         self.wallpaper_changer()
 
     def stop_wallpaper_changer(self):
+        self.run_wallpaper_changer = False
         self.start_button.config(state=tk.NORMAL)
         self.folder_entry.config(state=tk.NORMAL)
         self.folder_button.config(state=tk.NORMAL)
@@ -74,7 +76,6 @@ class WallpaperChangerGUI:
 
     def wallpaper_changer(self):
         self.show_wallpaper()
-        self.master.after(10000, self.wallpaper_changer)
 
 if __name__ == '__main__':
     root = tk.Tk()
